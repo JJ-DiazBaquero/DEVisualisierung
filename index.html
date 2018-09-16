@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
+<meta charset="utf-16">
 <style>
 
     .axis path,
@@ -18,8 +18,24 @@
         pointer-events: all;
     }
 
+    .node {
+        stroke: black;
+        stroke-width: 0.5;
+        opacity: 0.5;
+    }
+
+    .wort {
+        font: 10px verdana;
+        opacity: 0;
+    }
+
+
     .cells :hover circle {
         fill: red;
+    }
+
+    .cells :hover text {
+        opacity: 1;
     }
 
     .zoom {
@@ -38,7 +54,8 @@
             margin = {top: 40, right: 40, bottom: 40, left: 40},
             width = svg.attr("width") - margin.left - margin.right,
             height = svg.attr("height") - margin.top - margin.bottom;
-    height  = height*3
+    height  = height*2
+    width = width*1.5
     var formatValue = d3.format(",d");
 
     var y = d3.scaleLog()
@@ -53,16 +70,35 @@
 
         function zoomFunction(){
             // create new scale ojects based on event
-            //var new_xScale = d3.event.transform.rescaleX(x)
+            // var new_xScale = d3.event.transform.rescaleX(x);
+
+            var new_xScale = x.range([0, width * d3.event.transform.k],.1 * d3.event.transform.k);
+
+//            chart.select(".x.axis")
+//                    .attr("transform", "translate(" + d3.event.translate[0]+","+(height)+")")
+//                    .call(xAxis.scale(x.rangeRoundBands([0, width * d3.event.scale],.1 * d3.event.scale)));
+
+
             var new_yScale = d3.event.transform.rescaleY(y)
-            console.log(d3.event.transform)
+            console.log(d3.event.transform);
+
+            if(d3.event.transform.k <= 1){
+                new_xScale = x.range;
+                new_yScale = y.range;
+            }
 
             // update axes
-            //gX.call(xAxis.scale(new_xScale));
+            gX.call(xAxis.scale(new_xScale));
+            gX.attr("transform", "translate(" + d3.event.transform.x+",0)");
             gY.call(yAxis.scale(new_yScale));
 
             // update circle
+            g.selectAll("worte")
+                    .attr("fill", "none");
+
             cell.attr("transform", d3.event.transform)
+            g.selectAll("worte")
+                    .attr("fill", "auto");
         };
 
         // Zoom Function
@@ -73,14 +109,23 @@
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
                 .call(zoom);
 
+        var ticked = function() {
+//            cell.selectAll("circle")
+//                    .attr("cx", function(d) { return d.data.x; })
+//                    .attr("cy", function(d) { return d.data.y; });
+        };
+
+
         var simulation = d3.forceSimulation(data)
                 .force("y", d3.forceY(function(d) { return y(d.Score); }).strength(1))
                 .force("x", d3.forceX(function(d) { return x(d.Type); }))
                 .force("collide", d3.forceCollide(3))
+                .on("tick",ticked)
                 .stop();
         console.log("1")
+
         for (var i = 0; i < 120; ++i) {
-            simulation.tick()
+            simulation.tick();
         };
 
         yAxis = d3.axisLeft(y).ticks(100)
@@ -96,6 +141,7 @@
             .attr("transform", "translate(0,0)")
             .call(xAxis);
 
+
         var cell = g.append("g")
                 .attr("class", "cells")
                 .selectAll("g").data(d3.voronoi()
@@ -105,9 +151,16 @@
                         .polygons(data)).enter().append("g");
 
         cell.append("circle")
-                .attr("r", 2)
+                .attr("class","node")
+                .attr("r", 1)
                 .attr("cx", function(d) { return d.data.x; })
                 .attr("cy", function(d) { return d.data.y; });
+
+        cell.append("text")
+                .attr("class","wort")
+                .attr("x", function(d) { return d.data.x; })
+                .attr("y", function(d) { return d.data.y; })
+                .text(function(d) { return d.data.Wort });
 
         cell.append("path")
                 .attr("d", function(d) { return "M" + d.join("L") + "Z"; });
@@ -120,7 +173,11 @@
                 .attr("class", "zoom")
                 .attr("width", width)
                 .attr("height", height)
-                .call(zoom)
+                .call(zoom);
+
+
+
+
     });
 
     function type(d) {
