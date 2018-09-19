@@ -80,6 +80,8 @@
             .domain(d3.set(data, function(d) {return d.Type;}).values());
         y.domain(d3.extent(data, function(d) { return d.Score; }));
 
+        var z = d3.scaleOrdinal(d3.schemeCategory10);
+
         function zoomFunction(){
             // create new scale ojects based on event
             // var new_xScale = d3.event.transform.rescaleX(x);
@@ -159,9 +161,10 @@
 
         cell.append("circle")
                 .attr("class","node")
-                .attr("r", 5)
+                .attr("r", 3)
                 .attr("cx", function(d) { return d.data.x; })
-                .attr("cy", function(d) { return d.data.y; });
+                .attr("cy", function(d) { return d.data.y; })
+                .attr("fill",function(d) { return z(d.data.Type); });
 
         cell.append("text")
                 .attr("class","wort")
