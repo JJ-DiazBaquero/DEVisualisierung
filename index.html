@@ -55,15 +55,19 @@
            value="Pro Kategorie"
            onclick="showEachCategory()" />
 </div>
-<svg width="1340" height="600"></svg>
+<svg id="histogramm" width="1340" height="200"></svg>
+<svg id="graph" width="1340" height="600"></svg>
 <!--<script src="https://d3js.org/d3.v4.min.js"></script>-->
 <script src="d3.js"></script>
+<script src="histogramm.js"></script>
+
 <script>
 
-    var svg = d3.select("svg"),
-            margin = {top: 40, right: 40, bottom: 40, left: 40},
-            width = svg.attr("width") - margin.left - margin.right,
-            height = svg.attr("height") - margin.top - margin.bottom;
+    var margin = {top: 40, right: 40, bottom: 40, left: 40};
+
+    var svgGraph = d3.select("#graph"),
+            width = svgGraph.attr("width") - margin.left - margin.right,
+            height = svgGraph.attr("height") - margin.top - margin.bottom;
     height  = height;
     width = width;
     var formatValue = d3.format(",d");
@@ -75,6 +79,9 @@
 
     d3.csv("frecuency.csv", type, function(error, data) {
         if (error) throw error;
+
+        erzeugenHistogramm(data);
+
         var x = d3.scalePoint()
             .range([0,width])
             .domain(d3.set(data, function(d) {return d.Type;}).values());
@@ -119,10 +126,9 @@
         var zoom = d3.zoom()
                 .on("zoom", zoomFunction);
 
-        var g = svg.append("g")
+        var g = svgGraph.append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
                 .call(zoom);
-
 
         var simulation = d3.forceSimulation(data)
                 .force("y", d3.forceY(function(d) { return y(d.Score); }).strength(1))
