@@ -56,7 +56,7 @@
            onclick="showEachCategory()" />
 </div>
 <svg id="histogramm" width="1340" height="200"></svg>
-<svg id="graph" width="1340" height="600"></svg>
+<svg id="graph" width="1340" height="400"></svg>
 <!--<script src="https://d3js.org/d3.v4.min.js"></script>-->
 <script src="d3.js"></script>
 <script src="histogramm.js"></script>
@@ -68,46 +68,55 @@
     var svgGraph = d3.select("#graph"),
             width = svgGraph.attr("width") - margin.left - margin.right,
             height = svgGraph.attr("height") - margin.top - margin.bottom;
-    height  = height;
-    width = width;
+
     var formatValue = d3.format(",d");
 
-    var y = d3.scaleLog()
-            .rangeRound([height, 0]);
+    var y = d3.scaleLinear()
+            .range([height, 0]);
 
     var showAll = function(){console.log("3")};
+
+    var dispatch = d3.dispatch("brushMove");
 
     d3.csv("frecuency.csv", type, function(error, data) {
         if (error) throw error;
 
-        erzeugenHistogramm(data);
+
+        erzeugenHistogramm(data, svgGraph);
 
         var x = d3.scalePoint()
             .range([0,width])
             .domain(d3.set(data, function(d) {return d.Type;}).values());
-        y.domain(d3.extent(data, function(d) { return d.Score; }));
+        //y.domain(d3.extent(data, function(d) { return d.Score; }));
+        y.domain(gebenBruschAuswahl());
+
+        console.log(gebenBruschAuswahl());
+
+        var anzeigenDaten = data.filter(function (d) {
+            if (d.Score >= gebenBruschAuswahl()[0] && d.Score <= gebenBruschAuswahl()[1]) {
+                return true;
+            }
+            return false;
+        }
+        );
+
+        console.log(anzeigenDaten);
 
         var z = d3.scaleOrdinal(d3.schemeCategory10);
 
         function zoomFunction(){
             // create new scale ojects based on event
             // var new_xScale = d3.event.transform.rescaleX(x);
-
             var new_xScale = x.range([0, width * d3.event.transform.k],.1 * d3.event.transform.k);
-
 //            chart.select(".x.axis")
 //                    .attr("transform", "translate(" + d3.event.translate[0]+","+(height)+")")
 //                    .call(xAxis.scale(x.rangeRoundBands([0, width * d3.event.scale],.1 * d3.event.scale)));
-
-
             var new_yScale = d3.event.transform.rescaleY(y)
             console.log(d3.event.transform);
-
             if(d3.event.transform.k <= 1){
                 new_xScale = x.range;
                 new_yScale = y.range;
             }
-
             // update axes
             gX.call(xAxis.scale(new_xScale));
             gX.attr("transform", "translate(" + d3.event.transform.x+",0)");
@@ -126,25 +135,26 @@
         var zoom = d3.zoom()
                 .on("zoom", zoomFunction);
 
-        var g = svgGraph.append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-                .call(zoom);
 
-        var simulation = d3.forceSimulation(data)
-                .force("y", d3.forceY(function(d) { return y(d.Score); }).strength(1))
-                .force("x", d3.forceX(function(d) { return x(d.Type); }))
-                .force("collide", d3.forceCollide(5))
-                .stop();
-        console.log("1")
-        console.log(
-        d3.extent(data, function(d) { return d.Score; }))
+        var g = svgGraph.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .call(zoom);
+
+        var simulation = d3.forceSimulation(anzeigenDaten)
+            .force("y", d3.forceY(function(d) { return y(d.Score); }).strength(1))
+            .force("x", d3.forceX(function(d) { return x(d.Type); }))
+            .force("collide", d3.forceCollide(5))
+            .stop();
+
+
+        //.filter(function(d){return d.Score >= gebenBruschAuswahl()[0] && d.Score <= gebenBruschAuswahl()[1];})
 
         for (var i = 0; i < 120; ++i) {
             simulation.tick();
-        };
+        }
 
-        yAxis = d3.axisLeft(y).ticks(100)
-        xAxis = d3.axisTop(x).ticks(30)
+        var yAxis = d3.axisLeft(y).ticks(100);
+        var xAxis = d3.axisTop(x).ticks(30);
 
         gY = g.append("g")
             .attr("class", "axis axis--y")
@@ -158,19 +168,21 @@
 
 
         var cell = g.append("g")
-                .attr("class", "cells")
-                .selectAll("g").data(d3.voronoi()
-                        .extent([[-margin.left, -margin.top], [width + margin.right, height + margin.top]])
-                        .x(function(d) { return d.x; })
-                        .y(function(d) { return d.y; })
-                        .polygons(data)).enter().append("g");
+            .attr("class", "cells")
+            .selectAll("g").data(d3.voronoi()
+                    .extent([[-margin.left, -margin.top], [width + margin.right, height + margin.top]])
+                    .x(function(d) { return d.x; })
+                    .y(function(d) { return d.y; })
+                    .polygons(anzeigenDaten))
+            .enter()
+            .append("g");
 
         cell.append("circle")
-                .attr("class","node")
-                .attr("r", 3)
-                .attr("cx", function(d) { return d.data.x; })
-                .attr("cy", function(d) { return d.data.y; })
-                .attr("fill",function(d) { return z(d.data.Type); });
+            .attr("class","node")
+            .attr("r", 3)
+            .attr("cx", function(d) { return d.data.x; })
+            .attr("cy", function(d) { return d.data.y; })
+            .attr("fill",function(d) { return z(d.data.Type); });
 
         cell.append("text")
                 .attr("class","wort")
@@ -191,10 +203,7 @@
                 .attr("height", height)
                 .call(zoom);
 
-
-
         showAll = function(){
-
             var startTime = Date.now();
             var endTime = startTime + 5000;
 
@@ -231,6 +240,54 @@
 
             // .force("radial", d3.forceRadial(function(d) { return (width/2)/(max-min)*(-d.Score + min) + width/2; },width/2,height/2) )
         };
+
+        var updatenGraph = function() {
+
+            console.log("oliii");
+            y.domain(gebenBruschAuswahl());
+
+            yAxis = d3.axisLeft(y).ticks(100);
+            gY.call(yAxis);
+
+            anzeigenDaten = data.filter(function (d) {
+                if (d.Score >= gebenBruschAuswahl()[0] && d.Score <= gebenBruschAuswahl()[1]) {
+                    return true;
+                }
+                return false;
+            })
+
+            simulation = d3.forceSimulation(anzeigenDaten)
+                .force("y", d3.forceY(function(d) { return y(d.Score); }).strength(1))
+                .force("x", d3.forceX(function(d) { return x(d.Type); }))
+                .force("collide", d3.forceCollide(5))
+                .stop();
+            for (var i = 0; i < 30; ++i) {
+                simulation.tick();
+            }
+            console.log(anzeigenDaten)
+            //update
+            cell.selectAll("circle")
+                .data(anzeigenDaten)
+                .attr("cx", function(d) { return d.x; })
+                .attr("cy", function(d) { return d.y; })
+            //Enter
+            cell.selectAll("circle")
+                .data(anzeigenDaten)
+                .enter()
+                .append("circle")
+                .attr("class","node")
+                .attr("r", 3)
+                .attr("cx", function(d) { return d.x; })
+                .attr("cy", function(d) { return d.y; })
+                .attr("fill",function(d) { return z(d.Type); });
+            //Exit
+            cell.selectAll("circle")
+                .data(anzeigenDaten)
+                .exit()
+                .remove()
+        }
+
+        dispatch.on("brushMove", updatenGraph);
 
     });
 
